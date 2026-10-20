@@ -10,7 +10,6 @@ body {
     background: transparent;
     font-family: 'Segoe UI', sans-serif;
 }
-
 .chat-box {
     width: 400px;
     height: 580px;
@@ -22,83 +21,23 @@ body {
     overflow-y: hidden;
     position: relative;
 }
-
-/* Viewer bubble */
 .bubble.viewer {
-    display: inline-block;
     padding: 14px 20px;
     margin: 4px 0 4px 5px;
     border-radius: 30px;
     max-width: 85%;
-    position: relative;
-    animation: slideInBottomLeft 0.8s ease;
-    word-wrap: break-word;
-    backdrop-filter: blur(10px);
-    background: linear-gradient(135deg, #9600C8, rgba(90, 0, 140, 0.15));
-    color: #f9e6ff;
-    box-shadow: 0 0 25px rgba(180, 0, 255, 0.35);
-    border: 1px solid rgba(200, 0, 255, 0.15);
+    background: #9600C8;
+    color: #fff;
     align-self: flex-start;
 }
-
-.bubble.viewer::after {
-    content: "";
-    position: absolute;
-    left: -8px;
-    top: 10px;
-    border-width: 8px;
-    border-style: solid;
-    border-color: transparent #9600C8 transparent transparent;
-}
-
-/* Streamer bubble */
 .bubble.streamer {
-    display: inline-block;
     padding: 14px 20px;
     margin: 4px 5px 4px 0;
     border-radius: 30px;
     max-width: 85%;
-    position: relative;
-    animation: slideInBottomLeft 0.8s ease;
-    word-wrap: break-word;
-    backdrop-filter: blur(8px);
-    background: linear-gradient(135deg, #780000, rgba(80, 0, 0, 0.3));
-    color: #ffe6e6;
-    box-shadow: 0 0 25px rgba(255, 0, 0, 0.65);
-    border: 1px solid rgba(255, 0, 0, 0.3);
+    background: #780000;
+    color: #fff;
     align-self: flex-end;
-}
-
-.bubble.streamer::after {
-    content: "";
-    position: absolute;
-    right: -8px;
-    top: 10px;
-    border-width: 8px;
-    border-style: solid;
-    border-color: transparent transparent transparent #780000;
-}
-
-@keyframes slideInBottomLeft {
-    from { transform: translateY(20px) translateX(-10px); opacity: 0; }
-    to { transform: translateY(0) translateX(0); opacity: 1; }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0) scale(1); }
-    to { opacity: 0; transform: translateY(10px) scale(0.95); }
-}
-
-.bubble.fade-out {
-    animation: fadeOut 1.2s ease forwards;
-}
-
-.bubble img {
-    max-width: 100%;
-    border-radius: 10px;
-    margin-top: 5px;
-    display: inline-block;
-    vertical-align: middle;
 }
 </style>
 </head>
@@ -106,48 +45,41 @@ body {
 
 <div id="chat-box" class="chat-box"></div>
 
-<!-- Load TMI.js from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
 <script>
-const CHANNEL_NAME = "OnlyArchangel";
+const CHANNEL_NAME = "onlyarchangel"; // lowercase for Twitch
 const MAX_MESSAGES = 50;
 const MESSAGE_LIFETIME = 70000;
-
-const imageRegex = /(https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp))/i;
 
 function createBubble(nick, message, isStreamer) {
     const chatBox = document.getElementById("chat-box");
     const bubble = document.createElement("div");
     bubble.classList.add("bubble", isStreamer ? "streamer" : "viewer");
-
-    let parsedMessage = message;
-    if (imageRegex.test(message)) {
-        let imgUrl = message.match(imageRegex)[0];
-        parsedMessage = `<img src="${imgUrl}" alt="image" />`;
-    }
-
-    bubble.innerHTML = `<strong>${nick}:</strong> ${parsedMessage}`;
+    bubble.innerHTML = `<strong>${nick}:</strong> ${message}`;
     chatBox.appendChild(bubble);
 
     if (chatBox.children.length > MAX_MESSAGES) {
         chatBox.removeChild(chatBox.firstChild);
     }
 
-    setTimeout(() => {
-        bubble.classList.add("fade-out");
-        setTimeout(() => bubble.remove(), 1200);
-    }, MESSAGE_LIFETIME);
+    setTimeout(() => bubble.remove(), MESSAGE_LIFETIME);
 }
 
 // Connect to Twitch chat
 const client = new tmi.Client({
+    connection: { secure: true, reconnect: true },
     channels: [CHANNEL_NAME]
 });
 
-client.connect();
+client.connect().then(() => {
+    console.log("✅ Connected to Twitch chat");
+}).catch(err => {
+    console.error("❌ Connection error:", err);
+});
 
-client.on('message', (channel, userstate, message, self) => {
-    const isStreamer = userstate.username.toLowerCase() === CHANNEL_NAME.toLowerCase();
+client.on('message', (channel, userstate, message) => {
+    console.log("📩 Message received:", userstate['display-name'], message);
+    const isStreamer = userstate.username.toLowerCase() === CHANNEL_NAME;
     createBubble(userstate['display-name'], message, isStreamer);
 });
 </script>
